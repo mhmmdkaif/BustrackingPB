@@ -5,16 +5,17 @@ export default function BusList({
   liveBusData = {},
   onTrackBus
 }) {
+
   if (buses.length === 0) {
     return (
-      <div className="bg-white p-4 rounded-lg border text-center text-sm text-gray-500">
-        No buses found for this route
+      <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-sm text-slate-500">
+        No active buses right now for this route
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 mt-4">
+    <div className="space-y-3">
       {buses.map((bus) => {
         const liveInfo = liveBusData[bus.id];
 

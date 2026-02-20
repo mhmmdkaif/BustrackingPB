@@ -1,20 +1,37 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-export default function SourceDestinationSearch({ stops, onSearch }) {
+export default function SearchSection({ stops = [], onSearch }) {
+
   const [sourceInput, setSourceInput] = useState("");
   const [destinationInput, setDestinationInput] = useState("");
 
   const [sourceStop, setSourceStop] = useState(null);
   const [destinationStop, setDestinationStop] = useState(null);
 
-  const filterStops = (value) => {
-    if (!value) return [];
-    return stops.filter((stop) =>
-      stop.stop_name.toLowerCase().includes(value.toLowerCase())
-    );
-  };
+  /* ---------------- FILTERED LISTS ---------------- */
+
+  const filteredSourceStops = useMemo(() => {
+    if (!sourceInput) return [];
+    return stops
+      .filter(s =>
+        s.stop_name.toLowerCase().includes(sourceInput.toLowerCase())
+      )
+      .slice(0, 20);
+  }, [sourceInput, stops]);
+
+  const filteredDestinationStops = useMemo(() => {
+    if (!destinationInput) return [];
+    return stops
+      .filter(s =>
+        s.stop_name.toLowerCase().includes(destinationInput.toLowerCase())
+      )
+      .slice(0, 20);
+  }, [destinationInput, stops]);
+
+  /* ---------------- SEARCH ---------------- */
 
   const handleSearch = () => {
+
     if (!sourceStop || !destinationStop) {
       alert("Please select both source and destination");
       return;
@@ -31,16 +48,19 @@ export default function SourceDestinationSearch({ stops, onSearch }) {
     });
   };
 
+  /* ---------------- UI ---------------- */
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border">
-      <h2 className="text-lg font-semibold text-blue-900 mb-4">
+    <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-5">
+
+      <h2 className="text-xl font-semibold text-slate-800 mb-6">
         Where is my bus?
       </h2>
 
       {/* SOURCE */}
-      <div className="mb-4 relative">
-        <label className="block text-sm text-gray-600 mb-1">
-          Source
+      <div className="mb-5 relative">
+        <label className="text-sm text-slate-600 mb-1 block">
+          From
         </label>
 
         <input
@@ -50,32 +70,41 @@ export default function SourceDestinationSearch({ stops, onSearch }) {
             setSourceInput(e.target.value);
             setSourceStop(null);
           }}
-          placeholder="Type source stop"
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter source stop"
+          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm
+          focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
         {sourceInput && !sourceStop && (
-          <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-40 overflow-y-auto">
-            {filterStops(sourceInput).map((stop) => (
-              <li
+          <div className="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow max-h-56 overflow-y-auto">
+
+            {filteredSourceStops.map(stop => (
+              <div
                 key={stop.id}
                 onClick={() => {
                   setSourceStop(stop);
                   setSourceInput(stop.stop_name);
                 }}
-                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                className="px-4 py-2 text-sm cursor-pointer hover:bg-blue-50"
               >
                 {stop.stop_name}
-              </li>
+              </div>
             ))}
-          </ul>
+
+            {filteredSourceStops.length === 0 && (
+              <div className="px-4 py-3 text-sm text-slate-400">
+                No stops found
+              </div>
+            )}
+
+          </div>
         )}
       </div>
 
       {/* DESTINATION */}
       <div className="mb-6 relative">
-        <label className="block text-sm text-gray-600 mb-1">
-          Destination
+        <label className="text-sm text-slate-600 mb-1 block">
+          To
         </label>
 
         <input
@@ -85,35 +114,46 @@ export default function SourceDestinationSearch({ stops, onSearch }) {
             setDestinationInput(e.target.value);
             setDestinationStop(null);
           }}
-          placeholder="Type destination stop"
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter destination stop"
+          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm
+          focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
         {destinationInput && !destinationStop && (
-          <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-40 overflow-y-auto">
-            {filterStops(destinationInput).map((stop) => (
-              <li
+          <div className="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow max-h-56 overflow-y-auto">
+
+            {filteredDestinationStops.map(stop => (
+              <div
                 key={stop.id}
                 onClick={() => {
                   setDestinationStop(stop);
                   setDestinationInput(stop.stop_name);
                 }}
-                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                className="px-4 py-2 text-sm cursor-pointer hover:bg-blue-50"
               >
                 {stop.stop_name}
-              </li>
+              </div>
             ))}
-          </ul>
+
+            {filteredDestinationStops.length === 0 && (
+              <div className="px-4 py-3 text-sm text-slate-400">
+                No stops found
+              </div>
+            )}
+
+          </div>
         )}
       </div>
 
       {/* SEARCH BUTTON */}
       <button
         onClick={handleSearch}
-        className="w-full bg-blue-700 hover:bg-blue-800 text-white py-2 rounded font-medium"
+        className="w-full rounded-xl bg-blue-600 hover:bg-blue-700
+        text-white py-3 text-sm font-semibold transition"
       >
-        Search Buses
+        Find Buses
       </button>
+
     </div>
   );
 }

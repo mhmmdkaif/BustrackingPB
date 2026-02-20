@@ -1,121 +1,167 @@
-import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../../context/AuthContext";
-import api from "../../api/api";
+import { useState, useRef, useEffect, useContext } from "react";
 import { io } from "socket.io-client";
+import api from "../../api/api";
+import { AuthContext } from "../../context/AuthContext";
+
+import DriverTrip from "./DriverTrip";
+import DriverMap from "./DriverMap";
+import DriverHistory from "./DriverHistory";
 
 const socket = io("http://localhost:5000");
 
 export default function DriverDashboard() {
-  const { user, logout } = useContext(AuthContext);
 
-  const [busId, setBusId] = useState("");
+  const { user } = useContext(AuthContext);
+
+  const [page, setPage] = useState("trip");
   const [tracking, setTracking] = useState(false);
 
-  const fetchBus = async () => {
-    try {
-      // get my driver profile
-      const driverRes = await api.get("/drivers/me", {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
+  const [busInfo, setBusInfo] = useState(null);
 
-      const driverId = driverRes.data.id;
+  const watchIdRef = useRef(null);
+  const busIdRef = useRef(null);
 
-      // get buses
-      const busRes = await api.get("/buses", {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
-
-      const assignedBus = busRes.data.find(
-        (b) => b.driver_id === driverId
-      );
-
-      if (assignedBus) {
-        setBusId(assignedBus.id);
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  /* ---------------- FETCH BUS + ROUTE ---------------- */
 
   useEffect(() => {
-    fetchBus();
-  }, []);
+    const loadDriverBus = async () => {
+      try {
+        const driverRes = await api.get("/drivers/me", {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
 
-  const startTracking = () => {
-    if (!busId) {
+        const busRes = await api.get("/buses", {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+
+        const assigned = busRes.data.find(
+          (b) => b.driver_id === driverRes.data.id
+        );
+
+        if (assigned) {
+          setBusInfo(assigned);
+          busIdRef.current = assigned.id;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadDriverBus();
+  }, [user]);
+
+  /* ---------------- START TRIP ---------------- */
+
+  const startTrip = () => {
+    if (!busIdRef.current) {
       alert("No bus assigned");
       return;
     }
 
-    setTracking(true);
+    if (tracking) return;
 
-    navigator.geolocation.watchPosition(
+    const id = navigator.geolocation.watchPosition(
       async (pos) => {
         const data = {
-          bus_id: busId,
+          bus_id: busIdRef.current,
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           speed: pos.coords.speed || 40,
         };
 
         socket.emit("sendLocation", data);
-
-        await api.post("/location", data, {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        });
+        await api.post("/location", data);
       },
-      (err) => {
-        alert("Location permission denied");
-      }
+      () => alert("Location permission denied")
     );
+
+    watchIdRef.current = id;
+    setTracking(true);
+  };
+
+  /* ---------------- STOP TRIP ---------------- */
+
+  const stopTrip = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      setTracking(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50">
 
-      <div className="flex justify-between mb-4">
-        <h1 className="text-xl font-semibold">Driver Dashboard</h1>
+      {/* BUS INFO CARD */}
+      <section className="max-w-xl mx-auto px-4 pt-4">
 
-        <button
-          onClick={logout}
-          className="bg-red-600 text-white px-3 py-1 rounded"
-        >
-          Logout
-        </button>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 mb-4">
+
+          <h2 className="text-base font-semibold text-slate-800 mb-1">
+            🚍 Assigned Bus
+          </h2>
+
+          {busInfo ? (
+            <>
+              <p className="text-sm text-slate-700">
+                {busInfo.bus_number}
+              </p>
+
+              <p className="text-xs text-slate-500">
+                {busInfo.route_name || "Route not assigned"}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">
+              No bus assigned
+            </p>
+          )}
+
+        </div>
+
+      </section>
+
+      {/* TABS */}
+      <div className="max-w-xl mx-auto px-4 flex gap-3">
+
+        <Tab label="Trip" active={page==="trip"} onClick={()=>setPage("trip")} />
+        <Tab label="Map" active={page==="map"} onClick={()=>setPage("map")} />
+        <Tab label="History" active={page==="history"} onClick={()=>setPage("history")} />
+
       </div>
 
-      <div className="bg-white p-4 rounded mb-4">
-        <p className="mb-2">
-          Assigned Bus ID:
-          <span className="font-medium ml-2">
-            {busId || "Not Assigned"}
-          </span>
-        </p>
+      <div className="mt-4">
 
-        <button
-          onClick={startTracking}
-          disabled={tracking}
-          className="bg-blue-600 text-white w-full p-2 rounded disabled:opacity-50"
-        >
-          {tracking ? "Tracking Started" : "Start Trip"}
-        </button>
-      </div>
+        {page==="trip" && (
+          <DriverTrip
+            tracking={tracking}
+            startTrip={startTrip}
+            stopTrip={stopTrip}
+          />
+        )}
 
-      <div className="bg-white p-4 rounded">
-        <p>
-          Status:
-          <span className="ml-2 font-medium">
-            {tracking ? "Sending Live Location" : "Idle"}
-          </span>
-        </p>
+        {page==="map" && <DriverMap />}
+        {page==="history" && <DriverHistory />}
+
       </div>
 
     </div>
+  );
+}
+
+/* ---------------- TAB BUTTON ---------------- */
+
+function Tab({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-lg text-sm border
+        ${active
+          ? "bg-blue-600 text-white border-blue-600"
+          : "bg-white text-slate-600 border-slate-200"
+        }`}
+    >
+      {label}
+    </button>
   );
 }

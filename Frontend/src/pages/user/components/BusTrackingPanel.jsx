@@ -9,73 +9,95 @@ export default function BusTrackingPanel({
   const isLive = !!location;
 
   return (
-    <section className="max-w-5xl mx-auto px-4 mt-8">
-      <div className="bg-white border rounded-lg shadow-sm p-4">
+    <section className="max-w-xl mx-auto px-4 mt-6">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-blue-900">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+
+        {/* HEADER */}
+        <div className="flex items-center justify-between mb-2">
+
+          <h2 className="text-base font-semibold text-slate-800">
             🚌 {bus.bus_number}
           </h2>
 
-          {onClose && (
+          <div className="flex items-center gap-3">
+
+            {isLive && (
+              <button
+                onClick={onOpenMap}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View on Map
+              </button>
+            )}
+
             <button
               onClick={onClose}
-              className="text-sm text-gray-400 hover:text-gray-600"
+              className="text-xs text-slate-400 hover:text-slate-600"
             >
               Close
             </button>
-          )}
+
+          </div>
         </div>
 
-        {/* Route */}
-        <p className="text-sm text-gray-600 mb-3">
-          Route: {bus.route_name || "Not assigned"}
+        {/* ROUTE */}
+        <p className="text-xs text-slate-500 mb-3">
+          {bus.route_name || "Route not assigned"}
         </p>
 
-        {/* Live status */}
-        <div className="flex items-center gap-2 mb-3">
+        {/* LIVE STATUS */}
+        <div className="flex items-center gap-2 mb-4">
+
           <span
             className={`w-2 h-2 rounded-full ${
-              isLive ? "bg-green-500" : "bg-red-500"
+              isLive ? "bg-green-500" : "bg-red-400"
             }`}
-          ></span>
-          <span className="text-sm text-gray-700">
-            {isLive ? "Live tracking available" : "Bus not live yet"}
+          />
+
+          <span className="text-sm text-slate-700">
+            {isLive ? "Live tracking" : "Bus offline"}
           </span>
+
         </div>
 
-        {/* Live details */}
-        {isLive && (
-          <div className="text-sm text-gray-700 space-y-1 mb-4">
-            <p>
-              <b>Speed:</b> {location.speed || 0} km/h
-            </p>
+        {/* TIMELINE PLACEHOLDER */}
+        {isLive ? (
+          <div className="space-y-3 text-sm">
 
-            <p>
-              <b>Last updated:</b>{" "}
-              {new Date(location.updated_at).toLocaleTimeString()}
-            </p>
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <span>Previous stop</span>
+            </div>
 
-            {location.eta_minutes !== null && (
-              <p>
-                <b>ETA:</b> {location.eta_minutes} minutes
-              </p>
-            )}
+            <div className="flex items-center gap-3 ml-1">
+              <span>🚌</span>
+              <span className="text-blue-600">
+                Bus moving towards next stop
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-slate-300" />
+              <span>Next stop</span>
+            </div>
+
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Live tracking not available yet.
+          </p>
+        )}
+
+        {/* FOOTER */}
+        {isLive && location?.eta_minutes !== null && (
+          <div className="mt-4 text-sm text-slate-700">
+            ETA: {location.eta_minutes} min
           </div>
         )}
 
-        {/* Action */}
-        {isLive && (
-          <button
-            onClick={onOpenMap}
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white py-2 rounded font-medium"
-          >
-            Live tracking on map
-          </button>
-        )}
-
       </div>
+
     </section>
   );
 }

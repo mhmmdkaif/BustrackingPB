@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import api from "../../api/api";
 import { io } from "socket.io-client";
+import { AuthContext } from "../../context/AuthContext";
 
 // Components
 import Header from "./components/Header";
@@ -12,6 +13,10 @@ import MapModal from "./components/MapModal";
 const socket = io("http://localhost:5000");
 
 export default function UserDashboard() {
+
+  /* -------------------- AUTH -------------------- */
+  const { user } = useContext(AuthContext);
+
   /* -------------------- STATE -------------------- */
 
   const [stops, setStops] = useState([]);
@@ -21,17 +26,27 @@ export default function UserDashboard() {
   const [liveLocation, setLiveLocation] = useState(null);
   const [showMap, setShowMap] = useState(false);
 
-  /* -------------------- INITIAL LOAD -------------------- */
+  /* -------------------- LOAD STOPS -------------------- */
 
   useEffect(() => {
-    // Load stops for source-destination dropdown
+    if (!user?.token) return;
+
     const fetchStops = async () => {
-      const res = await api.get("/stops");
-      setStops(res.data);
+      try {
+        const res = await api.get("/stops", {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        });
+
+        setStops(res.data);
+      } catch (err) {
+        console.error("Failed to fetch stops", err);
+      }
     };
 
     fetchStops();
-  }, []);
+  }, [user]);
 
   /* -------------------- SOCKET LISTENER -------------------- */
 
@@ -49,21 +64,20 @@ export default function UserDashboard() {
 
   // Source → Destination search
   const handleRouteSearch = async ({ source, destination }) => {
-  try {
-    setSelectedBus(null);
-    setLiveLocation(null);
+    try {
+      setSelectedBus(null);
+      setLiveLocation(null);
 
-    const res = await api.get(
-      `/search/buses?sourceStopId=${source}&destinationStopId=${destination}`
-    );
+      const res = await api.get(
+        `/search/buses?sourceStopId=${source}&destinationStopId=${destination}`
+      );
 
-    setBuses(res.data);
-  } catch (err) {
-    console.error(err);
-    setBuses([]);
-  }
-};
-
+      setBuses(res.data);
+    } catch (err) {
+      console.error(err);
+      setBuses([]);
+    }
+  };
 
   // Track bus
   const handleTrackBus = async (bus) => {
@@ -89,7 +103,7 @@ export default function UserDashboard() {
       {/* Search */}
       <SearchSection
         stops={stops}
-        onRouteSearch={handleRouteSearch}
+        onSearch={handleRouteSearch}
       />
 
       {/* Results */}
